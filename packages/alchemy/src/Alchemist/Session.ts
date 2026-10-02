@@ -20,6 +20,7 @@ import { AuthError, AuthProviders } from "../Auth/AuthProvider.ts";
 import { SuppressMissingProviderConfig } from "../Auth/Profile.ts";
 import { withProfileOverride } from "../Auth/Resolve.ts";
 import { AwsAuth } from "../AWS/AuthProvider.ts";
+import { AzureAuth } from "../Azure/AuthProvider.ts";
 import { AxiomAuth } from "../Axiom/AuthProvider.ts";
 import { CloudflareAuth } from "../Cloudflare/Auth/AuthProvider.ts";
 import { FlyAuth } from "../Fly/AuthProvider.ts";
@@ -370,6 +371,7 @@ export const buildStackProviders = Effect.fn("buildStackProviders")(function* (
 
 const builtinAuth = Layer.mergeAll(
   AwsAuth,
+  AzureAuth,
   AxiomAuth,
   CloudflareAuth,
   FlyAuth,

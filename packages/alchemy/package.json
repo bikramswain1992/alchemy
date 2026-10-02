@@ -49,6 +49,9 @@
     "./AWS/Endpoint": "./src/AWS/Endpoint.ts",
     "./AWS/Region": "./src/AWS/Region.ts",
     "./AWS/Lambda/*": "./src/AWS/Lambda/*.ts",
+    "./Azure": "./src/Azure/index.ts",
+    "./Azure/*": "./src/Azure/*/index.ts",
+    "./Azure/Credentials": "./src/Azure/Credentials.ts",
     "./Command": "./src/Command/index.ts",
     "./Construct": "./src/Construct/index.ts",
     "./Bundle": "./src/Bundle/index.ts",
@@ -161,6 +164,21 @@
         "types": "./lib/AWS/Lambda/*.d.ts",
         "bun": "./src/AWS/Lambda/*.ts",
         "default": "./lib/AWS/Lambda/*.js"
+      },
+      "./Azure": {
+        "types": "./lib/Azure/index.d.ts",
+        "bun": "./src/Azure/index.ts",
+        "default": "./lib/Azure/index.js"
+      },
+      "./Azure/*": {
+        "types": "./lib/Azure/*/index.d.ts",
+        "bun": "./src/Azure/*/index.ts",
+        "default": "./lib/Azure/*/index.js"
+      },
+      "./Azure/Credentials": {
+        "types": "./lib/Azure/Credentials.d.ts",
+        "bun": "./src/Azure/Credentials.ts",
+        "default": "./lib/Azure/Credentials.js"
       },
       "./Command": {
         "types": "./lib/Command/index.d.ts",
@@ -398,6 +416,7 @@
     "@distilled.cloud/acme": "workspace:*",
     "@distilled.cloud/zerossl": "workspace:*",
     "@distilled.cloud/aws": "workspace:*",
+    "@distilled.cloud/azure": "workspace:*",
     "@distilled.cloud/axiom": "workspace:*",
     "@distilled.cloud/cloudflare": "workspace:*",
     "@distilled.cloud/core": "workspace:*",
