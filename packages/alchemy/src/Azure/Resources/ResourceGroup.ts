@@ -1,5 +1,6 @@
 import * as resources from "@distilled.cloud/azure/resources";
 import * as Data from "effect/Data";
+import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
 import * as Schedule from "effect/Schedule";
 import { Unowned } from "../../AdoptPolicy.ts";
@@ -72,6 +73,16 @@ export class ResourceGroupNotEmpty extends Data.TaggedError(
   name: string;
 }> {}
 
+export class ResourceGroupInventoryUncertain extends Data.TaggedError(
+  "Azure.ResourceGroupInventoryUncertain",
+)<{ name: string }> {
+  override get message(): string {
+    return `Resource group ${this.name} changed recently or has no usable change timestamp; ARM's empty resource inventory is not yet reliable enough to delete it.`;
+  }
+}
+
+const INVENTORY_SETTLE_MILLIS = 45_000;
+
 export class ResourceGroupUnowned extends Data.TaggedError(
   "Azure.ResourceGroupUnowned",
 )<{
@@ -87,13 +98,14 @@ export class ResourceGroupNotReady extends Data.TaggedError(
 const groupName = (id: string, name?: string) =>
   name ? Effect.succeed(name) : createPhysicalName({ id, maxLength: 90 });
 
+const UPDATED_AT_TAG = "alchemy::resource-group-updated-at";
+
 const get = (subscriptionId: string, name: string) =>
   resources
     .GetResourceGroup({ subscriptionId, resourceGroupName: name })
     .pipe(
-      Effect.catchTag(
-        ["ResourceGroupNotFound", "ResourceNotFound", "NotFound"],
-        () => Effect.succeed(undefined),
+      Effect.catchTag(["ResourceGroupNotFound", "ResourceNotFound"], () =>
+        Effect.succeed(undefined),
       ),
     );
 
@@ -153,8 +165,13 @@ export const ResourceGroupProvider = () =>
       const { subscriptionId, location: defaultLocation } =
         yield* AzureEnvironment.current;
       const name = yield* groupName(id, news.name ?? output?.name);
-      const desiredTags = { ...news.tags, ...(yield* createInternalTags(id)) };
       let observed = yield* get(subscriptionId, name);
+      const now = yield* Clock.currentTimeMillis;
+      const desiredTags = {
+        ...news.tags,
+        ...(yield* createInternalTags(id)),
+        [UPDATED_AT_TAG]: observed?.tags?.[UPDATED_AT_TAG] ?? String(now),
+      };
       if (!observed) {
         yield* resources
           .ResourceGroupsCreateOrUpdate({
@@ -180,7 +197,10 @@ export const ResourceGroupProvider = () =>
           subscriptionId,
           resourceGroupName: name,
           location: observed.location,
-          tags: desiredTags,
+          tags: {
+            ...desiredTags,
+            [UPDATED_AT_TAG]: String(yield* Clock.currentTimeMillis),
+          },
         });
         observed = yield* waitForGroup(subscriptionId, name);
       }
@@ -193,14 +213,33 @@ export const ResourceGroupProvider = () =>
         return yield* new ResourceGroupUnowned({ name: output.name });
       }
       // ARM DELETE recursively destroys *every* resource, including foreign assets.
-      // A single unowned (or not-yet-cleaned-up) child must prevent that.
+      // ARM can temporarily report an empty inventory even when a new child
+      // is already readable through its own API. Never use that empty result
+      // to authorize recursive deletion of a recently changed group.
       const children = yield* resources.ListResourceByResourceGroup({
         subscriptionId: output.subscriptionId,
         resourceGroupName: output.name,
-        _top: 1,
       });
       if (children.value.length || children.nextLink)
         return yield* new ResourceGroupNotEmpty({ name: output.name });
+      const changedAt = yield* Effect.sync(() =>
+        observed.tags?.[UPDATED_AT_TAG] !== undefined
+          ? Number(observed.tags[UPDATED_AT_TAG])
+          : Date.parse(
+              observed.systemData?.lastModifiedAt ??
+                observed.systemData?.createdAt ??
+                "",
+            ),
+      );
+      const now = yield* Clock.currentTimeMillis;
+      if (
+        !Number.isFinite(changedAt) ||
+        now - changedAt < INVENTORY_SETTLE_MILLIS
+      ) {
+        return yield* new ResourceGroupInventoryUncertain({
+          name: output.name,
+        });
+      }
       yield* resources
         .DeleteResourceGroup({
           subscriptionId: output.subscriptionId,
@@ -208,7 +247,7 @@ export const ResourceGroupProvider = () =>
         })
         .pipe(
           Effect.catchTag(
-            ["ResourceGroupNotFound", "ResourceNotFound", "NotFound"],
+            ["ResourceGroupNotFound", "ResourceNotFound"],
             () => Effect.void,
           ),
         );

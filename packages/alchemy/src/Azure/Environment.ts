@@ -25,7 +25,7 @@ export class AzureEnvironment extends Context.Service<
 }
 
 /** Keep the credential effect live: cached layer construction must not pin an expiring token. */
-export const fromCredentials = (location = DEFAULT_AZURE_LOCATION) =>
+export const fromCredentials = (location?: string) =>
   Layer.effect(
     AzureEnvironment,
     Effect.gen(function* () {
@@ -37,7 +37,14 @@ export const fromCredentials = (location = DEFAULT_AZURE_LOCATION) =>
             message: "Set AZURE_SUBSCRIPTION_ID or configure an Azure profile.",
           });
         }
-        return { ...config, location };
+        return {
+          ...config,
+          location:
+            location ??
+            ("location" in config && typeof config.location === "string"
+              ? config.location
+              : DEFAULT_AZURE_LOCATION),
+        };
       });
     }),
   );

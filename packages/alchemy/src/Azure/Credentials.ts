@@ -40,11 +40,18 @@ export const fromAuthProvider = () =>
         Effect.flatMap(({ resolve }) =>
           resolve.pipe(
             Effect.map(
-              ({ bearerToken, subscriptionId, tenantId, apiBaseUrl }) => ({
+              ({
                 bearerToken,
                 subscriptionId,
                 tenantId,
                 apiBaseUrl,
+                location,
+              }) => ({
+                bearerToken,
+                subscriptionId,
+                tenantId,
+                apiBaseUrl,
+                location,
               }),
             ),
             Effect.mapError(

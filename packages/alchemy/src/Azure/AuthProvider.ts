@@ -1,6 +1,7 @@
 import * as Clock from "effect/Clock";
 import * as BunServices from "@effect/platform-bun/BunServices";
 import * as Effect from "effect/Effect";
+import * as Option from "effect/Option";
 import * as Redacted from "effect/Redacted";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
@@ -80,8 +81,9 @@ export const cliToken = Effect.gen(function* () {
       message: `Azure CLI could not acquire a token: ${stderr.trim()}`,
     });
   }
+  const now = yield* Clock.currentTimeMillis;
   return yield* Effect.try({
-    try: () => parseAzureCliAccessToken(stdout),
+    try: () => parseAzureCliAccessToken(stdout, now),
     catch: (cause) =>
       new AuthError({
         message: "Azure CLI returned an invalid ARM token",
@@ -166,7 +168,12 @@ const servicePrincipalToken = (
   clientSecret: Redacted.Redacted<string>,
 ) =>
   Effect.gen(function* () {
-    const http = yield* HttpClient.HttpClient;
+    const provided = yield* Effect.serviceOption(HttpClient.HttpClient);
+    const http = Option.isSome(provided)
+      ? provided.value
+      : yield* HttpClient.HttpClient.pipe(
+          Effect.provide(FetchHttpClient.layer),
+        );
     const response = yield* http
       .execute(
         HttpClientRequest.post(
@@ -221,7 +228,7 @@ const servicePrincipalToken = (
       token: body.access_token,
       expiresAt: now + body.expires_in * 1000,
     };
-  }).pipe(Effect.provide(FetchHttpClient.layer));
+  });
 
 export const AzureAuth = AuthProviderLayer<
   AzureAuthConfig,
