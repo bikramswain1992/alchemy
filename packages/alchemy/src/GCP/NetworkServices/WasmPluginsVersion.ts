@@ -15,7 +15,6 @@ import {
   collectPages,
   hasAlchemyLabelKeys,
   lastSegment,
-
   normalizeLocation,
   parentOf,
   parseName,

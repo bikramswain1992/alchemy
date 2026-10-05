@@ -1,0 +1,16 @@
+{
+  "name": "azure-function-app",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc -b",
+    "deploy": "alchemy deploy",
+    "destroy": "alchemy destroy"
+  },
+  "dependencies": {
+    "@distilled.cloud/azure": "workspace:*",
+    "@effect/platform-node": "catalog:",
+    "alchemy": "workspace:*",
+    "effect": "catalog:"
+  }
+}

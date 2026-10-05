@@ -11,6 +11,27 @@ import {
   ResourceGroup,
   ResourceGroupProvider,
 } from "./Resources/ResourceGroup.ts";
+import {
+  StorageAccount,
+  StorageAccountProvider,
+} from "./Storage/StorageAccount.ts";
+import {
+  BlobContainer,
+  BlobContainerProvider,
+} from "./Storage/BlobContainer.ts";
+import {
+  AppServicePlan,
+  AppServicePlanProvider,
+} from "./Web/AppServicePlan.ts";
+import { FunctionApp, FunctionAppProvider } from "./Web/FunctionApp.ts";
+import {
+  FunctionDeployment,
+  FunctionDeploymentProvider,
+} from "./Web/FunctionDeployment.ts";
+import {
+  RoleAssignment,
+  RoleAssignmentProvider,
+} from "./Authorization/RoleAssignment.ts";
 
 export class Providers extends Provider.ProviderCollection<Providers>()(
   "Azure",
@@ -32,10 +53,24 @@ export const providers = (credentials = Credentials.fromAuthProvider()) =>
   Layer.effect(
     Providers,
     Effect.gen(function* () {
-      return yield* Provider.collection([ResourceGroup]);
+      return yield* Provider.collection([
+        ResourceGroup,
+        StorageAccount,
+        BlobContainer,
+        AppServicePlan,
+        FunctionApp,
+        FunctionDeployment,
+        RoleAssignment,
+      ]);
     }),
   ).pipe(
     Layer.provide(ResourceGroupProvider()),
+    Layer.provide(StorageAccountProvider()),
+    Layer.provide(BlobContainerProvider()),
+    Layer.provide(AppServicePlanProvider()),
+    Layer.provide(FunctionAppProvider()),
+    Layer.provide(FunctionDeploymentProvider()),
+    Layer.provide(RoleAssignmentProvider()),
     Layer.provideMerge(azureLive(credentials)),
     Layer.orDie,
   );
